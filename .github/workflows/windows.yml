@@ -1,0 +1,45 @@
+name: CMake Build
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+
+    - name: Install CMake, Ninja, and vcpkg
+      run: |
+        choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
+        choco install ninja
+        git clone https://github.com/Microsoft/vcpkg.git
+        .\vcpkg\bootstrap-vcpkg.bat
+        .\vcpkg\vcpkg integrate install
+
+    - name: Install dependencies
+      run: |
+        .\vcpkg\vcpkg install zlib:x64-windows
+        .\vcpkg\vcpkg install libpng:x64-windows
+
+    - name: Configure CMake
+      run: |
+        cmake -B build -S . -G "Ninja" -DCMAKE_TOOLCHAIN_FILE=./vcpkg/scripts/buildsystems/vcpkg.cmake
+      shell: cmd
+
+    - name: Build
+      run: |
+        cmake --build build
+      shell: cmd
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: compiled-binary
+        path: |
+          build
